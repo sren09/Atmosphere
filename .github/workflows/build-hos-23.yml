@@ -32,7 +32,17 @@ jobs:
             --volume "$GITHUB_WORKSPACE:/workspace" \
             --workdir /workspace \
             atmosphere-builder:hos-23 \
-            make -j2 dist-no-debug-nx_release
+            bash -euxo pipefail -c '
+              git config --global --add safe.directory /workspace
+
+              git clone https://github.com/switchbrew/libnx.git /tmp/libnx
+              git -C /tmp/libnx checkout 146c3d1446d35546943c7b6cfcd479bc1f5e9b67
+              make -C /tmp/libnx -j2
+              make -C /tmp/libnx/nx install
+
+              make -C troposphere/haze -j1
+              make -j2 dist-no-debug-nx_release
+            '
 
       - name: Generate checksums
         run: sha256sum out/atmosphere-*.zip out/fusee.bin > out/SHA256SUMS.txt
