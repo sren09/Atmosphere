@@ -43,17 +43,27 @@ jobs:
               make -C troposphere/haze -j1
               make -j2 dist-no-debug-nx_release
             '
+          sudo chown -R "$(id -u):$(id -g)" "$GITHUB_WORKSPACE/out"
 
-      - name: Generate checksums
-        run: sha256sum out/atmosphere-*.zip out/fusee.bin > out/SHA256SUMS.txt
+      - name: Stage artifacts and generate checksums
+        run: |
+          mapfile -t zips < <(find out -type f -name 'atmosphere-*.zip')
+          mapfile -t fusees < <(find out -type f -name 'fusee.bin')
+          test "${#zips[@]}" -eq 1
+          test "${#fusees[@]}" -eq 1
+
+          mkdir release-artifacts
+          cp "${zips[0]}" "${fusees[0]}" release-artifacts/
+          cd release-artifacts
+          sha256sum atmosphere-*.zip fusee.bin > SHA256SUMS.txt
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: atmosphere-hos-23-${{ github.sha }}
           path: |
-            out/atmosphere-*.zip
-            out/fusee.bin
-            out/SHA256SUMS.txt
+            release-artifacts/atmosphere-*.zip
+            release-artifacts/fusee.bin
+            release-artifacts/SHA256SUMS.txt
           if-no-files-found: error
           retention-days: 14
